@@ -1,56 +1,109 @@
 <html>
-<body>
-	<div id='background'>
-        <div id='character' style='position:absolute; top:100px; left:450px; background-image: url("img/down1.png"); width:59px; height:86px;'></div>
-    </div>
-    <script type="text/javascript">
-		var leftValue = 450, topValue = 100, walkValue = 1, direction = "down";
-		const MAX_X = 500, MAX_Y = 500, MIN_X = 0, MIN_Y = 0, STEP_SIZE = 10;
+	<head>
+		<title>Ninja-Man</title>
+		<style type="text/css">
+			* {
+				margin: 0;
+				padding: 0;
+				line-height: 0;
+			}
+			.tile {
+				height: 40px;
+				width: 40px;
+				display: inline-block;
+			}
+			.wall {
+				background-color: blue;
+			}
+			.sushi {
+				background-color: black;
+				background-image: url("img/sushi.png");
+				background-size: contain;
+			}
+			.blank {
+				background-color: black;
+			}
+			#ninja-man {
+				background-color: black;
+				background-image: url("img/ninja.gif");
+				background-size: contain;
+				position: absolute;
+				top: 40px;
+				left: 40px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="row">
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+		</div>
+		<div class="row">
+			<div class="wall tile"></div>
+			<div class="sushi tile"></div>
+			<div class="sushi tile"></div>
+			<div class="sushi tile"></div>
+			<div class="wall tile"></div>
+		</div>
+		<div class="row">
+			<div class="wall tile"></div>
+			<div class="sushi tile"></div>
+			<div class="wall tile"></div>
+			<div class="sushi tile"></div>
+			<div class="wall tile"></div>
+		</div>
+		<div class="row">
+			<div class="wall tile"></div>
+			<div class="sushi tile"></div>
+			<div class="wall tile"></div>
+			<div class="sushi tile"></div>
+			<div class="wall tile"></div>
+		</div>
+		<div class="row">
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+			<div class="wall tile"></div>
+		</div>
+		<div id="ninja-man" class="tile"></div>
+		<script type="text/javascript">
+			var leftValue = 40, topValue = 40;
+			const MAX_X = 400, MAX_Y = 400, MIN_X = 0, MIN_Y = 0, STEP_SIZE = 40;
 
-		function update() {
-			if (leftValue < MIN_X) {
-				leftValue = MIN_X;
-			} else if (leftValue > MAX_X) {
-				leftValue = MAX_X;
-			}
-			if (topValue < MIN_Y) {
-				topValue = MIN_Y;
-			} else if (topValue > MAX_Y) {
-				topValue = MAX_Y;
+			function update() {
+				if (leftValue < MIN_X) {
+					leftValue = MIN_X;
+				} else if (leftValue > MAX_X) {
+					leftValue = MAX_X;
+				}
+				if (topValue < MIN_Y) {
+					topValue = MIN_Y;
+				} else if (topValue > MAX_Y) {
+					topValue = MAX_Y;
+				}
+				document.getElementById("ninja-man").style.left = leftValue+"px";
+				document.getElementById("ninja-man").style.top = topValue + "px";
 			}
 
-    		document.getElementById("character").style.left = leftValue+"px";
-			document.getElementById("character").style.top = topValue + "px";
-			document.getElementById("character").style.backgroundImage = "url('img/" + direction + walkValue + ".png')";
-    	}
-
-    	document.onkeydown = function(e){
-			console.log(e);
-			if (walkValue == 1) {
-				walkValue = 2;
+			document.onkeydown = function(e){
+				if(e.keyCode == 37) { // LEFT
+					leftValue = leftValue - STEP_SIZE;
+				}
+				else if (e.keyCode == 39) { // RIGHT
+					leftValue = leftValue + STEP_SIZE;
+				}
+				else if (e.keyCode == 38) { // UP
+					topValue = topValue - STEP_SIZE;
+				}
+				else if (e.keyCode == 40) { // DOWN
+					topValue = topValue + STEP_SIZE;
+				}
+				update();
 			}
-			else if (walkValue == 2) {
-				walkValue = 1;
-			}
-    		if(e.keyCode == 37) { // LEFT
-				leftValue = leftValue - STEP_SIZE;
-				direction = "left";
-    		}
-    		else if (e.keyCode == 39) { // RIGHT
-				leftValue = leftValue + STEP_SIZE;
-				direction = "right";
-			}
-			else if (e.keyCode == 38) { // UP
-				topValue = topValue - STEP_SIZE;
-				direction = "top";
-			}
-			else if (e.keyCode == 40) { // DOWN
-				topValue = topValue + STEP_SIZE;
-				direction = "down";
-			}
-    		// ...
-    		update();
-    	}
-    </script>
-</body>
+		</script>
+	</body>
 </html>
