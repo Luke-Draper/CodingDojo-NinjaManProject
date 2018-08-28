@@ -1,0 +1,57 @@
+<html>
+<body>
+	<div id='background'>
+        <div id='character' style='position:absolute; top:100px; left:450px; background-image: url("img/down1.png"); width:59px; height:86px;'></div>
+    </div>
+    <script type="text/javascript">
+		var leftValue = 450, topValue = 100, walkValue = 1, direction = "down";
+
+		const MAX_X = 500, MAX_Y = 500, MIN_X = 0, MIN_Y = 0, STEP_SIZE = 10;
+
+		function update() {
+			if (leftValue < MIN_X) {
+				leftValue = MIN_X;
+			} else if (leftValue > MAX_X) {
+				leftValue = MAX_X;
+			}
+			if (topValue < MIN_Y) {
+				topValue = MIN_Y;
+			} else if (topValue > MAX_Y) {
+				topValue = MAX_Y;
+			}
+
+    		document.getElementById("character").style.left = leftValue+"px";
+			document.getElementById("character").style.top = topValue + "px";
+			document.getElementById("character").style.backgroundImage = "url('img/" + direction + walkValue + ".png')";
+    	}
+
+    	document.onkeydown = function(e){
+			console.log(e);
+			if (walkValue == 1) {
+				walkValue = 2;
+			}
+			else if (walkValue == 2) {
+				walkValue = 1;
+			}
+    		if(e.keyCode == 37) { // LEFT
+				leftValue = leftValue - STEP_SIZE;
+				direction = "left";
+    		}
+    		else if (e.keyCode == 39) { // RIGHT
+				leftValue = leftValue + STEP_SIZE;
+				direction = "right";
+			}
+			else if (e.keyCode == 38) { // UP
+				topValue = topValue - STEP_SIZE;
+				direction = "top";
+			}
+			else if (e.keyCode == 40) { // DOWN
+				topValue = topValue + STEP_SIZE;
+				direction = "down";
+			}
+    		// ...
+    		update();
+    	}
+    </script>
+</body>
+</html>
