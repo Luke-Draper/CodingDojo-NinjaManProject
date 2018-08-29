@@ -90,18 +90,22 @@
 			<div id="bluey" class="tile"></div>
 		</div>
 		<script type="text/javascript">
+/* Constants */
 
-var tileSize = 40;
-var screenWidth = window.innerWidth;
-var screenHeight = window.innerHeight;
+const GENERATOR_DIRECTION_CHANGE_CHANCE = 1, GENERATOR_MIN_MOVEMENT_IN_DIRECTION = 2;
 const MIN_MARGIN = 40;
-const GRID_WIDTH = 30, GRID_HEIGHT = 30; // These values do not include the exterior walls of the grid
+const GRID_WIDTH = 12, GRID_HEIGHT = 12; // These values do not include the exterior walls of the grid
 const GAME_TICK_TIME = 12;
 const NINJAMAN_MOVEMENT_SPEED = 12, PUMPKIN_MOVEMENT_SPEED = 14; // Ticks per move
 const STARTING_LIVES = 3;
 const SUSHI_POWER_TIME = 40;
 const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5;
 
+/* Variables */
+
+var tileSize = 40;
+var screenWidth = window.innerWidth;
+var screenHeight = window.innerHeight;
 var gridArray = [];
 var gridEnum = { // More expressive code when declaring types
 	init: 1,
@@ -162,6 +166,7 @@ var keyEnum = {
 var currentKey = keyEnum.none;
 var timer = null;
 
+/* Loading Functions */
 function alignGame() {
 	var gameScreenWidth = screenWidth - 2*MIN_MARGIN;
 	var gameScreenHeight = screenHeight - 2*MIN_MARGIN;
@@ -198,86 +203,22 @@ function initializeGame() {
 	resetGhosts();
 	placeNinjaMan();
 	placeGhosts();
-	updateNinjaMan();
-	updateGhosts();
+	drawNinjaMan();
+	drawGhosts();
 	timer = window.setInterval(gameTick, GAME_TICK_TIME);
 }
+initializeGame();
 
-function placeGhosts() {
-	var placedRed = false;
-	var placedPumpky = false;
-	var placedPinky = false;
-	var placedBluey = false;
-	var placed = false;
-	while (!placed) {
-		var ranX = Math.floor(Math.random() * GRID_WIDTH);
-		var ranY = Math.floor(Math.random() * GRID_HEIGHT);
-		if (()gridArray[ranY][ranX] == gridEnum.onigiri) {
-			placed = true;
-			ninjaMan.x = ranX;
-			ninjaMan.y = ranY;
-		}
-	}
-}
+/* World Generation Functions */
 
-function placeNinjaMan() {
-	var placed = false;
-	while (!placed) {
-		var ranX = Math.floor(Math.random() * GRID_WIDTH);
-		var ranY = Math.floor(Math.random() * GRID_HEIGHT);
-		if (gridArray[ranY][ranX] == gridEnum.onigiri) {
-			placed = true;
-			ninjaMan.x = ranX;
-			ninjaMan.y = ranY;
-			gridArray[ranY][ranX] = gridEnum.blank;
-		}
-	}
-}
-
-function isComplete() {
-	var done = true;
-	for (var y=0; y<GRID_HEIGHT; y++) {
-		for (var x=0; x<GRID_WIDTH; x++) {
-			if (gridArray[y][x] == gridEnum.sushi || gridArray[y][x] == gridEnum.onigiri) {
-				done = false;
-			}
-		}
-	}
-	return done;
-}
-
-function endGame() {
-	console.log("Your score is : " + ninjaMan.score);
-	if (timer != null) {
-		window.clearInterval(timer);
-		timer = null;
-	}
-}
-
-function resetNinjaMan() {
-	ninjaMan.currentTick = 1;
-	ninjaMan.x = 0;
-	ninjaMan.y = 0;
-	ninjaMan.score = 0;
-	ninjaMan.invulnerable = false;
-	ninjaMan.flashCount = 0;
-	ninjaMan.livesRemaining = STARTING_LIVES;
-	ninjaMan.sushiPower = false;
-	ninjaMan.sushiPowerTimeRemaining = 0;
-}
-function resetGhosts() {
-	red.currentTick = 1;
-	red.x = -1;
-	red.y = -1;
-	pumpky.currentTick = 1;
-	pumpky.x = -1;
-	pumpky.y = -1;
-	pinky.currentTick = 1;
-	pinky.x = -1;
-	pinky.y = -1;
-	bluey.currentTick = 1;
-	bluey.x = -1;
-	bluey.y = -1;
+function generateGrid() {
+	initializeGrid();
+	generateBaseGrid();
+	replaceInGrid(gridEnum.init, gridEnum.wall);
+	findAndFill2X2S(gridEnum.blank, gridEnum.wall);
+	removeDeadEnds(gridEnum.blank, gridEnum.wall);
+	removeIslands();
+	replaceInGrid(gridEnum.blank, gridEnum.onigiri);
 }
 
 function initializeGrid() {
@@ -290,16 +231,6 @@ function initializeGrid() {
 	}
 }
 
-function generateGrid() {
-	initializeGrid();
-	generateBaseGrid();
-	replaceInGrid(gridEnum.init, gridEnum.wall);
-	findAndFill2X2S(gridEnum.blank, gridEnum.wall);
-	removeDeadEnds(gridEnum.blank, gridEnum.wall);
-	replaceInGrid(gridEnum.blank, gridEnum.onigiri);
-}
-
-const DIRECTION_CHANGE_CHANCE = 1, MIN_MOVEMENT_IN_DIRECTION = 2;
 function generateBaseGrid() {
 	var direction = keyEnum.up;
 	var genX = Math.floor(GRID_WIDTH/2);
@@ -309,7 +240,6 @@ function generateBaseGrid() {
 	var movedInDirection = 0;
 
 	while (pathsPlaced<maxPaths) {
-		console.log(genX + " , " + genY);
 		if (gridArray[genY][genX] == gridEnum.init) {
 			gridArray[genY][genX] = gridEnum.blank;
 			pathsPlaced++;
@@ -317,7 +247,6 @@ function generateBaseGrid() {
 		changedDirection = false;
 		var moved = false;
 		while (!moved) {
-			console.log(movedInDirection);
 			if(direction == keyEnum.left) { // LEFT
 				if (genX - 1 < 0) {
 					if (changedDirection) {
@@ -327,7 +256,7 @@ function generateBaseGrid() {
 						changedDirection = true;
 						movedInDirection = 0;
 					}
-				} else if (Math.random() < DIRECTION_CHANGE_CHANCE * (movedInDirection - MIN_MOVEMENT_IN_DIRECTION)) {
+				} else if (Math.random() < GENERATOR_DIRECTION_CHANGE_CHANCE * (movedInDirection - GENERATOR_MIN_MOVEMENT_IN_DIRECTION)) {
 					direction = genChangeDirection(direction);
 					changedDirection = true;
 					movedInDirection = 0;
@@ -345,7 +274,7 @@ function generateBaseGrid() {
 						changedDirection = true;
 						movedInDirection = 0;
 					}
-				} else if (Math.random() < DIRECTION_CHANGE_CHANCE * (movedInDirection - MIN_MOVEMENT_IN_DIRECTION)) {
+				} else if (Math.random() < GENERATOR_DIRECTION_CHANGE_CHANCE * (movedInDirection - GENERATOR_MIN_MOVEMENT_IN_DIRECTION)) {
 					direction = genChangeDirection(direction);
 					changedDirection = true;
 					movedInDirection = 0;
@@ -363,7 +292,7 @@ function generateBaseGrid() {
 						changedDirection = true;
 						movedInDirection = 0;
 					}
-				} else if (Math.random() < DIRECTION_CHANGE_CHANCE * (movedInDirection - MIN_MOVEMENT_IN_DIRECTION)) {
+				} else if (Math.random() < GENERATOR_DIRECTION_CHANGE_CHANCE * (movedInDirection - GENERATOR_MIN_MOVEMENT_IN_DIRECTION)) {
 					direction = genChangeDirection(direction);
 					changedDirection = true;
 					movedInDirection = 0;
@@ -381,7 +310,7 @@ function generateBaseGrid() {
 						changedDirection = true;
 						movedInDirection = 0;
 					}
-				} else if (Math.random() < DIRECTION_CHANGE_CHANCE * (movedInDirection - MIN_MOVEMENT_IN_DIRECTION)) {
+				} else if (Math.random() < GENERATOR_DIRECTION_CHANGE_CHANCE * (movedInDirection - GENERATOR_MIN_MOVEMENT_IN_DIRECTION)) {
 					direction = genChangeDirection(direction);
 					changedDirection = true;
 					movedInDirection = 0;
@@ -501,7 +430,6 @@ function findAndFill2X2S(valToFind, valToFill) {
 	}
 }
 
-
 function removeDeadEnds(valToFind, valToFill) {
 	for (var loops = 0; loops < GRID_HEIGHT*GRID_WIDTH; loops++) {
 		for (var y=0; y<GRID_HEIGHT; y++) {
@@ -529,6 +457,10 @@ function removeDeadEnds(valToFind, valToFill) {
 	}
 }
 
+function removeIslands() {
+	//TODO
+}
+
 function drawWorld() {
 	var gridContent = "";
 	//Add Top Wall
@@ -553,6 +485,64 @@ function drawWorld() {
 	gridContent += "</div>";
 	document.getElementById('grid').innerHTML = gridContent;
 	updateTileSize();
+}
+
+/* NinjaMan & Interaction Functions */
+
+document.onkeydown = function(e) {
+	if(e.keyCode == 37) { // LEFT
+		currentKey = keyEnum.left;
+	}
+	else if (e.keyCode == 39) { // RIGHT
+		currentKey = keyEnum.right;
+	}
+	else if (e.keyCode == 38) { // UP
+		currentKey = keyEnum.up;
+	}
+	else if (e.keyCode == 40) { // DOWN
+		currentKey = keyEnum.down;
+	}
+}
+document.onkeyup = function(e) {
+	if(e.keyCode == 37 && currentKey == keyEnum.left) { // LEFT
+		currentKey = keyEnum.none;
+	}
+	else if (e.keyCode == 39 && currentKey == keyEnum.right) { // RIGHT
+		currentKey = keyEnum.none;
+	}
+	else if (e.keyCode == 38 && currentKey == keyEnum.up) { // UP
+		currentKey = keyEnum.none;
+	}
+	else if (e.keyCode == 40 && currentKey == keyEnum.down) { // DOWN
+		currentKey = keyEnum.none;
+	}
+}
+
+function resetNinjaMan() {
+	ninjaMan.currentTick = 1;
+	ninjaMan.x = 0;
+	ninjaMan.y = 0;
+	ninjaMan.score = 0;
+	ninjaMan.invulnerable = false;
+	ninjaMan.flashCount = 0;
+	ninjaMan.livesRemaining = STARTING_LIVES;
+	ninjaMan.sushiPower = false;
+	ninjaMan.sushiPowerTimeRemaining = 0;
+}
+
+function placeNinjaMan() {
+	var placed = false;
+	while (!placed) {
+		var ranX = Math.floor(Math.random() * GRID_WIDTH);
+		var ranY = Math.floor(Math.random() * GRID_HEIGHT);
+		if (gridArray[ranY][ranX] == gridEnum.onigiri) {
+			placed = true;
+			ninjaMan.x = ranX;
+			ninjaMan.y = ranY;
+			gridArray[ranY][ranX] = gridEnum.blank;
+			drawWorld();
+		}
+	}
 }
 
 function ninjaManGameTick() {
@@ -590,12 +580,12 @@ function moveNinjaMan(xMove,yMove) {
 	if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.blank || gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.onigiri || gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.sushi) {
 		ninjaMan.x += xMove;
 		ninjaMan.y += yMove;
-		updateNinjaMan();
+		drawNinjaMan();
 		updateScore();
 	}
 }
 
-function updateNinjaMan() {
+function drawNinjaMan() {
 	document.getElementById("ninja-man").style.left = (ninjaMan.x + 1) * tileSize + "px";
 	document.getElementById("ninja-man").style.top = (ninjaMan.y - (1 + GRID_HEIGHT)) * tileSize + "px";
 }
@@ -612,32 +602,82 @@ function updateScore() {
 	}
 }
 
-document.onkeydown = function(e) {
-	if(e.keyCode == 37) { // LEFT
-		currentKey = keyEnum.left;
-	}
-	else if (e.keyCode == 39) { // RIGHT
-		currentKey = keyEnum.right;
-	}
-	else if (e.keyCode == 38) { // UP
-		currentKey = keyEnum.up;
-	}
-	else if (e.keyCode == 40) { // DOWN
-		currentKey = keyEnum.down;
+/* Ghost Functions */
+
+function placeGhosts() {
+	var placed = false;
+	while (!placed) {
+		var nextPlace = red;
+		if (red.x <= 0) {
+			nextPlace = red;
+		} else if (pumpky.x <= 0) {
+			nextPlace = pumpky;
+		} else if (pinky.x <= 0) {
+			nextPlace = pinky;
+		} else if (bluey.x <= 0) {
+			nextPlace = bluey;
+		} else {
+			placed = true;
+			break;
+		}
+		var ranX = Math.floor(Math.random() * GRID_WIDTH);
+		var ranY = Math.floor(Math.random() * GRID_HEIGHT);
+		if (gridArray[ranY][ranX] == gridEnum.onigiri && !(ranX == ninjaMan.x && ranY == ninjaMan.y) && !(ranX == red.x && ranY == red.y) && !(ranX == pumpky.x && ranY == pumpky.y) && !(ranX == pinky.x && ranY == pinky.y) && !(ranX == bluey.x && ranY == bluey.y)) {
+			nextPlace.x = ranX;
+			nextPlace.y = ranY;
+		}
 	}
 }
-document.onkeyup = function(e) {
-	if(e.keyCode == 37 && currentKey == keyEnum.left) { // LEFT
-		currentKey = keyEnum.none;
+
+function resetGhosts() {
+	red.currentTick = 1;
+	red.x = -1;
+	red.y = -1;
+	red.dead = false;
+	pumpky.currentTick = 1;
+	pumpky.x = -1;
+	pumpky.y = -1;
+	pumpky.dead = false;
+	pinky.currentTick = 1;
+	pinky.x = -1;
+	pinky.y = -1;
+	pinky.dead = false;
+	bluey.currentTick = 1;
+	bluey.x = -1;
+	bluey.y = -1;
+	bluey.dead = false;
+}
+
+function drawGhosts() {
+	document.getElementById("red").style.left = (red.x * tileSize - 4) + "px";
+	document.getElementById("red").style.top = (red.y - (1 + GRID_HEIGHT)) * tileSize + "px";
+	document.getElementById("pumpky").style.left = ((pumpky.x - 1) * tileSize - (2*4)) + "px";
+	document.getElementById("pumpky").style.top = (pumpky.y - (1 + GRID_HEIGHT)) * tileSize + "px";
+	document.getElementById("pinky").style.left = ((pinky.x - 2) * tileSize - (3*4)) + "px";
+	document.getElementById("pinky").style.top = (pinky.y - (1 + GRID_HEIGHT)) * tileSize + "px";
+	document.getElementById("bluey").style.left = ((bluey.x - 3) * tileSize - (4*4)) + "px";
+	document.getElementById("bluey").style.top = (bluey.y - (1 + GRID_HEIGHT)) * tileSize + "px";
+}
+
+/* Game Functions */
+
+function isComplete() {
+	var done = true;
+	for (var y=0; y<GRID_HEIGHT; y++) {
+		for (var x=0; x<GRID_WIDTH; x++) {
+			if (gridArray[y][x] == gridEnum.sushi || gridArray[y][x] == gridEnum.onigiri) {
+				done = false;
+			}
+		}
 	}
-	else if (e.keyCode == 39 && currentKey == keyEnum.right) { // RIGHT
-		currentKey = keyEnum.none;
-	}
-	else if (e.keyCode == 38 && currentKey == keyEnum.up) { // UP
-		currentKey = keyEnum.none;
-	}
-	else if (e.keyCode == 40 && currentKey == keyEnum.down) { // DOWN
-		currentKey = keyEnum.none;
+	return done;
+}
+
+function endGame() {
+	console.log("Your score is : " + ninjaMan.score);
+	if (timer != null) {
+		window.clearInterval(timer);
+		timer = null;
 	}
 }
 
@@ -648,7 +688,6 @@ function gameTick() {
 	}
 }
 
-initializeGame();
 		</script>
 	</body>
 </html>
