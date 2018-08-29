@@ -79,6 +79,14 @@
 		</div>
 		<script type="text/javascript">
 			
+			const TILE_SIZE = 40;
+			const GRID_WIDTH = 12, GRID_HEIGHT = 12; // These values do not include the exterior walls of the grid
+			const GAME_TICK_TIME = 25;
+			const NINJAMAN_MOVEMENT_SPEED = 6, PUMPKIN_MOVEMENT_SPEED = 7; // Ticks per move
+			const STARTING_LIVES = 3;
+			const SUSHI_POWER_TIME = 40;
+			const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5;
+
 			var gridArray = [];
 			var gridEnum = { // More expressive code when declaring types
 				init: 1,
@@ -95,22 +103,29 @@
 				5: 'sushi'
 			}
 			var ninjaMan = {
+				currentTick: 1,
 				x: 0,
 				y: 0,
 				score: 0,
 				invulnerable: false, //TODO
 				flashCount: 0, //whether he is visible after being hit during invulnerability
-				livesRemaining: 3,
+				livesRemaining: STARTING_LIVES,
 				sushiPower: false, //TODO
 				sushiPowerTimeRemaining: 0
 			}
-			const TILE_SIZE = 40;
-			const GRID_WIDTH = 12, GRID_HEIGHT = 12; // These values do not include the exterior walls of the grid
-			const GAME_TICK_TIME = 600;//TODO
-			const SUSHI_POWER_TIME = 40;
-			const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5;
+			var keyEnum = {
+				none: 0,
+				up: 1,
+				down: 2,
+				left: 3,
+				right: 4
+			}
+			var currentKey = keyEnum.none;
+			var timer = null;
+
 			
 			function initializeGame() {
+				resetNinjaMan();
 				initializeGrid();
 				randomizeGrid();
 				drawWorld();
@@ -118,6 +133,27 @@
 				updateNinjaMan();
 				//placeGhosts(); //TODO
 				//updateGhosts(); //TODO
+				timer = window.setInterval(gameTick, GAME_TICK_TIME);
+			}
+
+			function endGame() {
+				console.log("Your score is : " + ninjaMan.score);
+				if (timer != null) {
+					window.clearInterval(timer);
+					timer = null;
+				}
+			}
+
+			function resetNinjaMan() {
+				ninjaMan.currentTick = 1;
+				ninjaMan.x = 0;
+				ninjaMan.y = 0;
+				ninjaMan.score = 0;
+				ninjaMan.invulnerable = false;
+				ninjaMan.flashCount = 0;
+				ninjaMan.livesRemaining = STARTING_LIVES;
+				ninjaMan.sushiPower = false;
+				ninjaMan.sushiPowerTimeRemaining = 0;
 			}
 
 			function initializeGrid() {
@@ -159,56 +195,94 @@
 				document.getElementById('grid').innerHTML = gridContent;
 			}
 
+			function ninjaManGameTick() {
+				if (ninjaMan.currentTick >= NINJAMAN_MOVEMENT_SPEED) {
+					currentKeyNinjaManCheck();
+					ninjaMan.currentTick = 1;
+				} else {
+					ninjaMan.currentTick++;
+				}
+			}
+
+			function currentKeyNinjaManCheck() {
+				if(currentKey == keyEnum.left) { // LEFT
+					moveNinjaMan(-1,0);
+					document.getElementById("ninja-man").style.transform = "scaleX(-1)";
+				}
+				else if (currentKey == keyEnum.right) { // RIGHT
+					moveNinjaMan(1,0);
+					document.getElementById("ninja-man").style.transform = "";
+				}
+				else if (currentKey == keyEnum.up) { // UP
+					moveNinjaMan(0,-1);
+					document.getElementById("ninja-man").style.transform = "rotate(-90deg)";
+				}
+				else if (currentKey == keyEnum.down) { // DOWN
+					moveNinjaMan(0,1);
+					document.getElementById("ninja-man").style.transform = "rotate(90deg)";
+				}
+			}
+
+			function moveNinjaMan(xMove,yMove) {
+				if (ninjaMan.y + yMove < 0 || ninjaMan.y + yMove >= GRID_HEIGHT || ninjaMan.x + xMove < 0 || ninjaMan.x + xMove >= GRID_WIDTH) {
+					return; //Prevent moving off the board
+				}
+				if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.blank || gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.onigiri || gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.sushi) {
+					ninjaMan.x += xMove;
+					ninjaMan.y += yMove;
+					updateNinjaMan();
+					updateScore();
+				}
+			}
 
 			function updateNinjaMan() {
 				document.getElementById("ninja-man").style.left = (ninjaMan.x + 1) * TILE_SIZE + "px";
 				document.getElementById("ninja-man").style.top = (ninjaMan.y + 1) * TILE_SIZE + "px";
 			}
-			
-			function moveNinjaMan(xMove,yMove) {
-				if (ninjaMan.y + yMove < 0 || ninjaMan.y + yMove >= GRID_HEIGHT || ninjaMan.x + xMove < 0 || ninjaMan.x + xMove >= GRID_WIDTH) {
-					return; //Prevent moving off the board
-				}
-				if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.blank) {
-					ninjaMan.x += xMove;
-					ninjaMan.y += yMove;
-					updateNinjaMan();
-				} else if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.sushi) {
-					gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] = gridEnum.blank;
+
+			function updateScore() {
+				if (gridArray[ninjaMan.y][ninjaMan.x] == gridEnum.onigiri) {
+					gridArray[ninjaMan.y][ninjaMan.x] = gridEnum.blank;
 					drawWorld();
-					ninjaMan.x += xMove;
-					ninjaMan.y += yMove;
-					ninjaMan.score += SUSHI_SCORE;
-					updateNinjaMan();
-					console.log(ninjaMan.score);
-				} else if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.onigiri) {
-					gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] = gridEnum.blank;
-					drawWorld();
-					ninjaMan.x += xMove;
-					ninjaMan.y += yMove;
 					ninjaMan.score += ONIGIRI_SCORE;
-					updateNinjaMan();
-					console.log(ninjaMan.score);
+				} else if (gridArray[ninjaMan.y][ninjaMan.x] == gridEnum.sushi) {
+					gridArray[ninjaMan.y][ninjaMan.x] = gridEnum.blank;
+					drawWorld();
+					ninjaMan.score += SUSHI_SCORE;
 				}
 			}
 
-			document.onkeydown = function(e){
+			document.onkeydown = function(e) {
 				if(e.keyCode == 37) { // LEFT
-					moveNinjaMan(-1,0);
-					document.getElementById("ninja-man").style.transform = "scaleX(-1)";
+					currentKey = keyEnum.left;
 				}
 				else if (e.keyCode == 39) { // RIGHT
-					moveNinjaMan(1,0);
-					document.getElementById("ninja-man").style.transform = "";
+					currentKey = keyEnum.right;
 				}
 				else if (e.keyCode == 38) { // UP
-					moveNinjaMan(0,-1);
-					document.getElementById("ninja-man").style.transform = "rotate(-90deg)";
+					currentKey = keyEnum.up;
 				}
 				else if (e.keyCode == 40) { // DOWN
-					moveNinjaMan(0,1);
-					document.getElementById("ninja-man").style.transform = "rotate(90deg)";
+					currentKey = keyEnum.down;
 				}
+			}
+			document.onkeyup = function(e) {
+				if(e.keyCode == 37 && currentKey == keyEnum.left) { // LEFT
+					currentKey = keyEnum.none;
+				}
+				else if (e.keyCode == 39 && currentKey == keyEnum.right) { // RIGHT
+					currentKey = keyEnum.none;
+				}
+				else if (e.keyCode == 38 && currentKey == keyEnum.up) { // UP
+					currentKey = keyEnum.none;
+				}
+				else if (e.keyCode == 40 && currentKey == keyEnum.down) { // DOWN
+					currentKey = keyEnum.none;
+				}
+			}
+
+			function gameTick() {
+				ninjaManGameTick();
 			}
 
 			initializeGame();
