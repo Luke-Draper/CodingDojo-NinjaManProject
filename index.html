@@ -7,6 +7,14 @@
 				padding: 0;
 				line-height: 0;
 			}
+			html {
+				background-color: black;
+			}
+			#game {
+				position: absolute;
+				top: 40;
+				left: 80;
+			}
 			.tile {
 				height: 40px;
 				width: 40px;
@@ -34,7 +42,7 @@
 			#ninja-man {
 				background-image: url("img/ninja.gif");
 				background-size: contain;
-				position: absolute;
+				position: relative;
 				top: 40px;
 				left: 40px;
 			}
@@ -79,10 +87,13 @@
 		</div>
 		<script type="text/javascript">
 			
-			const TILE_SIZE = 40;
-			const GRID_WIDTH = 12, GRID_HEIGHT = 12; // These values do not include the exterior walls of the grid
-			const GAME_TICK_TIME = 25;
-			const NINJAMAN_MOVEMENT_SPEED = 6, PUMPKIN_MOVEMENT_SPEED = 7; // Ticks per move
+			var tileSize = 40;
+			var screenWidth = window.innerWidth;
+			var screenHeight = window.innerHeight;
+			const MIN_MARGIN = 40;
+			const GRID_WIDTH = 20, GRID_HEIGHT = 20; // These values do not include the exterior walls of the grid
+			const GAME_TICK_TIME = 12;
+			const NINJAMAN_MOVEMENT_SPEED = 12, PUMPKIN_MOVEMENT_SPEED = 14; // Ticks per move
 			const STARTING_LIVES = 3;
 			const SUSHI_POWER_TIME = 40;
 			const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5;
@@ -123,6 +134,34 @@
 			var currentKey = keyEnum.none;
 			var timer = null;
 
+			function alignGame() {
+				var gameScreenWidth = screenWidth - 2*MIN_MARGIN;
+				var gameScreenHeight = screenHeight - 2*MIN_MARGIN;
+				var gameTileWidth = GRID_WIDTH + 2;
+				var gameTileHeight = GRID_HEIGHT + 2;
+				if (Math.floor(gameScreenHeight/gameTileHeight) <= Math.floor(gameScreenWidth/gameTileWidth)) {
+					tileSize = Math.floor(gameScreenHeight/gameTileHeight);
+					var gameWidth = gameTileWidth * tileSize;
+					var margin = Math.floor((gameScreenWidth - gameWidth)/2);
+					document.getElementById("game").style.left = (margin + MIN_MARGIN) + "px";
+					document.getElementById("game").style.top = MIN_MARGIN + "px";
+				} else {
+					tileSize = Math.floor(gameScreenWidth/gameTileWidth);
+					var gameHeight = gameTileHeight * tileSize;
+					var margin = Math.floor((gameScreenHeight - gameHeight)/2);
+					document.getElementById("game").style.top = (margin + MIN_MARGIN) + "px";
+					document.getElementById("game").style.left = MIN_MARGIN + "px";
+				}
+			}
+			alignGame(); //Run once when the window is loaded. Attempted to make it resize functional but was not able to make it work.
+
+			function updateTileSize() {
+				var all = document.getElementsByClassName('tile');
+				for (var i = 0; i < all.length; i++) {
+					all[i].style.width = tileSize + "px";
+					all[i].style.height = tileSize + "px";
+				}
+			}
 			
 			function initializeGame() {
 				resetNinjaMan();
@@ -134,6 +173,18 @@
 				//placeGhosts(); //TODO
 				//updateGhosts(); //TODO
 				timer = window.setInterval(gameTick, GAME_TICK_TIME);
+			}
+
+			function isComplete() {
+				var done = true;
+				for (var y=0; y<GRID_HEIGHT; y++) {
+					for (var x=0; x<GRID_WIDTH; x++) {
+						if (gridArray[y][x] == gridEnum.sushi || gridArray[y][x] == gridEnum.onigiri) {
+							done = false;
+						}
+					}
+				}
+				return done;
 			}
 
 			function endGame() {
@@ -160,14 +211,26 @@
 				for (var y=0; y<GRID_HEIGHT; y++) {
 					var rowArray = [];
 					for (var x=0; x<GRID_WIDTH; x++) {
-						rowArray.push(gridEnum.blank);
+						rowArray.push(gridEnum.init);
 					}
 					gridArray.push(rowArray);
 				}
 			}
 			
 			function randomizeGrid() {
-				//TODO
+				var genSnake = {
+					direction: keyEnum.up,
+					x: Math.floor(GRID_WIDTH),
+					y: Math.floor(GRID_HEIGHT),
+					pathsPlaced: 0,
+					maxPaths: Math.floor(GRID_WIDTH*GRID_HEIGHT*3/5),
+					pathsPlacedInDirection: 0,
+					minPathsPlacedInDirection: 3,
+					directionChangeChance: 0.3
+				}
+				
+
+
 			}
 
 			function drawWorld() {
@@ -193,6 +256,7 @@
 				}
 				gridContent += "</div>";
 				document.getElementById('grid').innerHTML = gridContent;
+				updateTileSize();
 			}
 
 			function ninjaManGameTick() {
@@ -236,8 +300,8 @@
 			}
 
 			function updateNinjaMan() {
-				document.getElementById("ninja-man").style.left = (ninjaMan.x + 1) * TILE_SIZE + "px";
-				document.getElementById("ninja-man").style.top = (ninjaMan.y + 1) * TILE_SIZE + "px";
+				document.getElementById("ninja-man").style.left = (ninjaMan.x + 1) * tileSize + "px";
+				document.getElementById("ninja-man").style.top = (ninjaMan.y - (1 + GRID_HEIGHT)) * tileSize + "px";
 			}
 
 			function updateScore() {
@@ -283,6 +347,9 @@
 
 			function gameTick() {
 				ninjaManGameTick();
+				if (isComplete()) {
+					//start new game but keep score
+				}
 			}
 
 			initializeGame();
