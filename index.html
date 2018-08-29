@@ -12,20 +12,59 @@
 				width: 40px;
 				display: inline-block;
 			}
+			.init {
+				background-color: purple;
+			}
 			.wall {
-				background-color: blue;
+				background-color: darkslategray;
+			}
+			.onigiri {
+				background-color: white;
+				background-image: url("img/onigiri.png");
+				background-size: contain;
 			}
 			.sushi {
-				background-color: black;
+				background-color: white;
 				background-image: url("img/sushi.png");
 				background-size: contain;
 			}
 			.blank {
-				background-color: black;
+				background-color: white;
 			}
 			#ninja-man {
-				background-color: black;
 				background-image: url("img/ninja.gif");
+				background-size: contain;
+				position: absolute;
+				top: 40px;
+				left: 40px;
+			}
+			#red {
+				background-color: white;
+				background-image: url("img/red.gif");
+				background-size: contain;
+				position: absolute;
+				top: 40px;
+				left: 40px;
+			}
+			#pumpky {
+				background-color: white;
+				background-image: url("img/pumpky.gif");
+				background-size: contain;
+				position: absolute;
+				top: 40px;
+				left: 40px;
+			}
+			#pinky {
+				background-color: white;
+				background-image: url("img/pinky.gif");
+				background-size: contain;
+				position: absolute;
+				top: 40px;
+				left: 40px;
+			}
+			#bluey {
+				background-color: white;
+				background-image: url("img/bluey.gif");
 				background-size: contain;
 				position: absolute;
 				top: 40px;
@@ -34,62 +73,108 @@
 		</style>
 	</head>
 	<body>
-		<div id="world"></div>
+		<div id="grid"></div>
 		<div id="ninja-man" class="tile"></div>
 		<script type="text/javascript">
 			
-			var worldArray = [
-				[1,1,1,1,1,1,1,1,1],
-				[1,0,2,2,2,2,2,2,1],
-				[1,2,1,2,1,2,1,2,1],
-				[1,2,2,2,2,2,2,2,1],
-				[1,2,1,2,1,2,1,2,1],
-				[1,2,2,2,2,2,2,2,1],
-				[1,2,1,2,1,2,1,2,1],
-				[1,2,2,2,2,2,2,2,1],
-				[1,1,1,1,1,1,1,1,1],
-			];
-			var worldDict = {
-				0: 'blank',
-				1: 'wall',
-				2: 'sushi'
+			var gridArray = [];
+			var gridEnum = { // More expressive code when declaring types
+				init: 1,
+				blank: 2,
+				wall: 3,
+				onigiri: 4,
+				sushi: 5
+			}
+			var gridDict = {
+				1: 'init',
+				2: 'blank',
+				3: 'wall',
+				4: 'onigiri',
+				5: 'sushi'
+			}
+			var ninjaMan = {
+				x: 0,
+				y: 0,
+				score: 0,
+				invulnerable: false,
+				flashCount: 0, //whether he is visible after being hit during invulnerability
+				livesRemaining: 3,
+				sushiPower: false,
+				sushiPowerTimeRemaining: 0
+			}
+			const TILE_SIZE = 40;
+			const GRID_WIDTH = 12, GRID_HEIGHT = 12; // These values do not include the exterior walls of the grid
+			const GAME_TICK_TIME = 600;
+			const SUSHI_POWER_TIME = 40;
+			const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5;
+
+			function initializeGrid() {
+				for (var y=0; y<GRID_HEIGHT; y++) {
+					var rowArray = [];
+					for (var x=0; x<GRID_WIDTH; x++) {
+						rowArray.push(gridEnum.blank);
+					}
+					gridArray.push(rowArray);
+				}
+			}
+			
+			function randomizeGrid() {
+
 			}
 
 			function drawWorld() {
-				var worldContent = "";
-				for (var row=0; row<worldArray.length; row++) {
-					worldContent += "<div class='row'>";
-					for (var col=0; col<worldArray[row].length; col++) {
-						worldContent += ("<div class='tile " + worldDict[worldArray[row][col]] + "'></div>");
-					}
-					worldContent += "</div>";
+				var gridContent = "";
+				//Add Top Wall
+				gridContent += "<div class='row'>";
+				for (var temp=0; temp<GRID_WIDTH+2; temp++) {
+					gridContent += "<div class='tile wall'></div>";
 				}
-				document.getElementById('world').innerHTML = worldContent;
+				//Add Array Content
+				gridContent += "</div>";
+				for (var row=0; row<GRID_HEIGHT; row++) {
+					gridContent += "<div class='row'><div class='tile wall'></div>";
+					for (var col=0; col<GRID_WIDTH; col++) {
+						gridContent += ("<div class='tile " + gridDict[gridArray[row][col]] + "'></div>");
+					}
+					gridContent += "<div class='tile wall'></div></div>";
+				}
+				//Add Bottom Wall
+				gridContent += "<div class='row'>";
+				for (var temp=0; temp<GRID_WIDTH+2; temp++) {
+					gridContent += "<div class='tile wall'></div>";
+				}
+				gridContent += "</div>";
+				document.getElementById('grid').innerHTML = gridContent;
 			}
 
-			var ninjaMan = {
-				x: 1,
-				y: 1,
-				score: 0
-			}
-			const GRID_SIZE = 40;
 
 			function updateNinjaMan() {
-				document.getElementById("ninja-man").style.left = ninjaMan.x * GRID_SIZE + "px";
-				document.getElementById("ninja-man").style.top = ninjaMan.y * GRID_SIZE + "px";
+				document.getElementById("ninja-man").style.left = (ninjaMan.x + 1) * TILE_SIZE + "px";
+				document.getElementById("ninja-man").style.top = (ninjaMan.y + 1) * TILE_SIZE + "px";
 			}
 			
 			function moveNinjaMan(xMove,yMove) {
-				if (worldDict[worldArray[ninjaMan.y + yMove][ninjaMan.x + xMove]] == 'blank') {
+				if (ninjaMan.y + yMove < 0 || ninjaMan.y + yMove >= GRID_HEIGHT || ninjaMan.x + xMove < 0 || ninjaMan.x + xMove >= GRID_WIDTH) {
+					return; //Prevent moving off the board
+				}
+				if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.blank) {
 					ninjaMan.x += xMove;
 					ninjaMan.y += yMove;
 					updateNinjaMan();
-				} else if (worldDict[worldArray[ninjaMan.y + yMove][ninjaMan.x + xMove]] == 'sushi') {
-					worldArray[ninjaMan.y + yMove][ninjaMan.x + xMove] = 0;
+				} else if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.sushi) {
+					gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] = gridEnum.blank;
 					drawWorld();
 					ninjaMan.x += xMove;
 					ninjaMan.y += yMove;
-					ninjaMan.score++;
+					ninjaMan.score += SUSHI_SCORE;
+					updateNinjaMan();
+					console.log(ninjaMan.score);
+				} else if (gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] == gridEnum.onigiri) {
+					gridArray[ninjaMan.y + yMove][ninjaMan.x + xMove] = gridEnum.blank;
+					drawWorld();
+					ninjaMan.x += xMove;
+					ninjaMan.y += yMove;
+					ninjaMan.score += ONIGIRI_SCORE;
 					updateNinjaMan();
 					console.log(ninjaMan.score);
 				}
@@ -109,6 +194,7 @@
 					moveNinjaMan(0,1);
 				}
 			}
+			initializeGrid();
 			drawWorld();
 		</script>
 	</body>
