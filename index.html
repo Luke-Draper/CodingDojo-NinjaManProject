@@ -34,43 +34,39 @@
 		</style>
 	</head>
 	<body>
-		<div class="row">
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-		</div>
-		<div class="row">
-			<div class="wall tile"></div>
-			<div class="sushi tile"></div>
-			<div class="sushi tile"></div>
-			<div class="sushi tile"></div>
-			<div class="wall tile"></div>
-		</div>
-		<div class="row">
-			<div class="wall tile"></div>
-			<div class="sushi tile"></div>
-			<div class="wall tile"></div>
-			<div class="sushi tile"></div>
-			<div class="wall tile"></div>
-		</div>
-		<div class="row">
-			<div class="wall tile"></div>
-			<div class="sushi tile"></div>
-			<div class="wall tile"></div>
-			<div class="sushi tile"></div>
-			<div class="wall tile"></div>
-		</div>
-		<div class="row">
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-			<div class="wall tile"></div>
-		</div>
+		<div id="world"></div>
 		<div id="ninja-man" class="tile"></div>
 		<script type="text/javascript">
+			
+			var worldArray = [
+				[1,1,1,1,1],
+				[1,0,2,2,1],
+				[1,2,1,2,1],
+				[1,2,2,2,1],
+				[1,2,1,2,1],
+				[1,2,2,2,1],
+				[1,2,1,2,1],
+				[1,2,2,2,1],
+				[1,1,1,1,1],
+			];
+			var worldDict = {
+				0: 'blank',
+				1: 'wall',
+				2: 'sushi'
+			}
+
+			function drawWorld() {
+				var worldContent = "";
+				for (var row=0; row<worldArray.length; row++) {
+					worldContent += "<div class='row'>";
+					for (var col=0; col<worldArray[row].length; col++) {
+						worldContent += ("<div class='tile " + worldDict[worldArray[row][col]] + "'></div>");
+					}
+					worldContent += "</div>";
+				}
+				document.getElementById('world').innerHTML = worldContent;
+			}
+
 			var leftValue = 40, topValue = 40;
 			const MAX_X = 400, MAX_Y = 400, MIN_X = 0, MIN_Y = 0, STEP_SIZE = 40;
 
@@ -85,7 +81,7 @@
 				} else if (topValue > MAX_Y) {
 					topValue = MAX_Y;
 				}
-				document.getElementById("ninja-man").style.left = leftValue+"px";
+				document.getElementById("ninja-man").style.left = leftValue + "px";
 				document.getElementById("ninja-man").style.top = topValue + "px";
 			}
 
@@ -104,6 +100,7 @@
 				}
 				update();
 			}
+			drawWorld();
 		</script>
 	</body>
 </html>
