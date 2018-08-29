@@ -540,7 +540,10 @@ function placeNinjaMan() {
 			ninjaMan.x = ranX;
 			ninjaMan.y = ranY;
 			gridArray[ranY][ranX] = gridEnum.blank;
+<<<<<<< HEAD
 			drawWorld();
+=======
+>>>>>>> 4d325141a128745e176ca69339a46a7ce992611a
 		}
 	}
 }
@@ -648,7 +651,11 @@ function resetGhosts() {
 	bluey.dead = false;
 }
 
+<<<<<<< HEAD
 function drawGhosts() {
+=======
+function updateGhosts() {
+>>>>>>> 4d325141a128745e176ca69339a46a7ce992611a
 	document.getElementById("red").style.left = (red.x * tileSize - 4) + "px";
 	document.getElementById("red").style.top = (red.y - (1 + GRID_HEIGHT)) * tileSize + "px";
 	document.getElementById("pumpky").style.left = ((pumpky.x - 1) * tileSize - (2*4)) + "px";
