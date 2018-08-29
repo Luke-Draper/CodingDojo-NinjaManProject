@@ -94,7 +94,7 @@
 
 const GENERATOR_DIRECTION_CHANGE_CHANCE = 1, GENERATOR_MIN_MOVEMENT_IN_DIRECTION = 2;
 const MIN_MARGIN = 40;
-const GRID_WIDTH = 12, GRID_HEIGHT = 12; // These values do not include the exterior walls of the grid
+const GRID_WIDTH = 20, GRID_HEIGHT = 20; // These values do not include the exterior walls of the grid
 const GAME_TICK_TIME = 12;
 const NINJAMAN_MOVEMENT_SPEED = 12, PUMPKIN_MOVEMENT_SPEED = 14; // Ticks per move
 const STARTING_LIVES = 3;
@@ -458,7 +458,136 @@ function removeDeadEnds(valToFind, valToFill) {
 }
 
 function removeIslands() {
-	//TODO
+	var noInvalid = false;
+	while (!noInvalid) {
+		var testArray = [];
+		for (var y=0; y<GRID_HEIGHT; y++) {
+			var rowArray = [];
+			for (var x=0; x<GRID_WIDTH; x++) {
+				rowArray.push('invalid');
+			}
+			testArray.push(rowArray);
+		}
+		var startSet = false;
+		for (var y=0; y<GRID_HEIGHT; y++) {
+			for (var x=0; x<GRID_WIDTH; x++) {
+				if (!isValid(x,y)) {
+					testArray[y][x] = 'wall';
+				} else if (!startSet) {
+					testArray[y][x] = 'valid'
+					startSet = true;
+				}
+			}
+		}
+		for (var loop=0; loop<GRID_HEIGHT*GRID_WIDTH; loop++) {
+			for (var y=0; y<GRID_HEIGHT; y++) {
+				for (var x=0; x<GRID_WIDTH; x++) {
+					if (testArray[y][x] == 'valid') {
+						if (x>0 && testArray[y][x-1] == 'invalid') {
+							testArray[y][x-1] = 'valid'
+						}
+						if (x<GRID_WIDTH-1 && testArray[y][x+1] == 'invalid') {
+							testArray[y][x+1] = 'valid'
+						}
+						if (y>0 && testArray[y-1][x] == 'invalid') {
+							testArray[y-1][x] = 'valid'
+						}
+						if (y<GRID_HEIGHT-1 && testArray[y+1][x] == 'invalid') {
+							testArray[y+1][x] = 'valid'
+						}
+					}
+				}
+			}
+		}
+		if (testArray[0][0] == 'invalid' && (testArray[0][1] == 'valid' || testArray[1][0] == 'valid')) {
+			testArray[0][0] = 'valid'
+		}
+		if (testArray[GRID_HEIGHT-1][0] == 'invalid' && (testArray[GRID_HEIGHT-1][1] == 'valid' || testArray[GRID_HEIGHT-2][0] == 'valid')) {
+			testArray[GRID_HEIGHT-1][0] = 'valid'
+		}
+		if (testArray[0][GRID_WIDTH-1] == 'invalid' && (testArray[0][GRID_WIDTH-2] == 'valid' || testArray[1][GRID_WIDTH-1] == 'valid')) {
+			testArray[0][GRID_WIDTH-1] = 'valid'
+		}
+		if (testArray[GRID_HEIGHT-1][GRID_WIDTH-1] == 'invalid' && (testArray[GRID_HEIGHT-1][GRID_WIDTH-2] == 'valid' || testArray[GRID_HEIGHT-2][GRID_WIDTH-1] == 'valid')) {
+			testArray[GRID_HEIGHT-1][GRID_WIDTH-1] = 'valid'
+		}
+		var validFirst = false;
+		var invalidRem = false;
+		var vaSave = true;
+		var inSave = false;
+		var vaX = -1;
+		var vaY = -1;
+		var inX = -1;
+		var inY = -1;
+		for (var y=0; y<GRID_HEIGHT; y++) {
+			for (var x=0; x<GRID_WIDTH; x++) {
+				if (testArray[y][x] == 'valid') {
+					if (!invalidRem) {
+						validFirst = true;
+					}
+					if (!vaSave && vaX == -1) {
+						vaX = x;
+						vaY = y;
+					}
+					if (vaSave) {
+						vaX = x;
+						vaY = y;
+					}
+				} else if (testArray[y][x] == 'invalid') {
+					invalidRem = true;
+					if (!validFirst) {
+						vaSave = false;
+						inSave = true;
+					}
+					if (!inSave && inX == -1) {
+						inX = x;
+						inY = y;
+					}
+					if (inSave) {
+						inX = x;
+						inY = y;
+					}
+				}
+			}
+		}
+		if (!invalidRem) {
+			noInvalid = true;
+		} else {
+			var curX = vaX;
+			var curY = vaY;
+			var pathComplete = false;
+			while (!pathComplete) {
+				if (curX > inX) {
+					curX--;
+				} else if (curX < inX) {
+					curX++;
+				} else if (curY > inY) {
+					curY--;
+				} else if (curY < inY) {
+					curY++;
+				}
+				if (curX == inX && curY == inY) {
+					pathComplete = true;
+				} else {
+					testArray[curY][curX] = 'new';
+				}
+			}
+			for (var y=0; y<GRID_HEIGHT; y++) {
+				for (var x=0; x<GRID_WIDTH; x++) {
+					if (testArray[y][x] == 'new') {
+						gridArray[y][x] = gridEnum.blank;
+					}
+				}
+			}
+		}
+	}
+}
+
+function isValid(x,y) {
+	if (gridArray[y][x] == gridEnum.blank || gridArray[y][x] == gridEnum.onigiri || gridArray[y][x] == gridEnum.sushi) {
+		return true;
+	}
+	return false;
 }
 
 function drawWorld() {
@@ -540,10 +669,7 @@ function placeNinjaMan() {
 			ninjaMan.x = ranX;
 			ninjaMan.y = ranY;
 			gridArray[ranY][ranX] = gridEnum.blank;
-<<<<<<< HEAD
 			drawWorld();
-=======
->>>>>>> 4d325141a128745e176ca69339a46a7ce992611a
 		}
 	}
 }
@@ -651,11 +777,7 @@ function resetGhosts() {
 	bluey.dead = false;
 }
 
-<<<<<<< HEAD
 function drawGhosts() {
-=======
-function updateGhosts() {
->>>>>>> 4d325141a128745e176ca69339a46a7ce992611a
 	document.getElementById("red").style.left = (red.x * tileSize - 4) + "px";
 	document.getElementById("red").style.top = (red.y - (1 + GRID_HEIGHT)) * tileSize + "px";
 	document.getElementById("pumpky").style.left = ((pumpky.x - 1) * tileSize - (2*4)) + "px";
