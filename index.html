@@ -10,6 +10,14 @@
 			html {
 				background-color: black;
 			}
+			#score {
+				position: absolute;
+				top: 20;
+				font-family: monospace;
+				font-size: 20px;
+				left: 80;
+				color: white;
+			}
 			#game {
 				position: absolute;
 				top: 40;
@@ -47,7 +55,6 @@
 				left: 40px;
 			}
 			#red {
-				background-color: white;
 				background-image: url("img/red.gif");
 				background-size: contain;
 				position: relative;
@@ -55,7 +62,6 @@
 				left: 40px;
 			}
 			#pumpky {
-				background-color: white;
 				background-image: url("img/pumpky.gif");
 				background-size: contain;
 				position: relative;
@@ -63,7 +69,6 @@
 				left: 40px;
 			}
 			#pinky {
-				background-color: white;
 				background-image: url("img/pinky.gif");
 				background-size: contain;
 				position: relative;
@@ -71,12 +76,27 @@
 				left: 40px;
 			}
 			#bluey {
-				background-color: white;
 				background-image: url("img/bluey.gif");
 				background-size: contain;
 				position: relative;
 				top: 40px;
 				left: 40px;
+			}
+
+			@keyframes blink { /* This animation based off of this help page https://stackoverflow.com/questions/33667143/how-to-make-a-blinking-image-in-css3 */
+				0% {opacity:1;}
+				50% {opacity:0;}
+				100% {opacity:1;}
+			} 
+			.blink {
+				animation: blink normal 0.4s infinite ease-in-out; /* Opera and prob css3 final iteration */
+			}
+			@keyframes spin {
+				from {transform:rotate(0deg);}
+				to {transform:rotate(360deg);}
+			}
+			.spin {
+				animation: spin normal 0.4s infinite linear; /* Opera and prob css3 final iteration */
 			}
 		</style>
 	</head>
@@ -89,20 +109,26 @@
 			<div id="pinky" class="tile"></div>
 			<div id="bluey" class="tile"></div>
 		</div>
+		<div id="score">: Highscore 0 : Score 0 : Lives 3 :</div>
 		<script type="text/javascript">
 /* Constants */
 
 const GENERATOR_DIRECTION_CHANGE_CHANCE = 1, GENERATOR_MIN_MOVEMENT_IN_DIRECTION = 2;
 const MIN_MARGIN = 40;
 const GRID_WIDTH = 20, GRID_HEIGHT = 20; // These values do not include the exterior walls of the grid
-const GAME_TICK_TIME = 12;
-const NINJAMAN_MOVEMENT_SPEED = 12, PUMPKIN_MOVEMENT_SPEED = 14; // Ticks per move
+const SUSHI_PER_GAME = 3;
+const GAME_TICK_TIME = 15;
+const NINJAMAN_MOVEMENT_SPEED = 8, GHOST_MOVEMENT_SPEED = 19; // Ticks per move
 const STARTING_LIVES = 3;
-const SUSHI_POWER_TIME = 40;
-const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5;
+const INVULNERABILITY_TIME = 150;
+const SUSHI_POWER_TIME = 300;
+const SUSHI_SCORE = 20, ONIGIRI_SCORE = 5, GHOST_SCORE = 40;
+const TICKS_BEFORE_START = 100;
 
 /* Variables */
 
+var highscore = 2500;
+var gameTicks = 0;
 var tileSize = 40;
 var screenWidth = window.innerWidth;
 var screenHeight = window.innerHeight;
@@ -127,7 +153,7 @@ var ninjaMan = {
 	y: 0,
 	score: 0,
 	invulnerable: false, //TODO
-	flashCount: 0, //whether he is visible after being hit during invulnerability
+	invulnerableTimeRemaining: 0,
 	livesRemaining: STARTING_LIVES,
 	sushiPower: false, //TODO
 	sushiPowerTimeRemaining: 0
@@ -177,12 +203,14 @@ function alignGame() {
 		var gameWidth = gameTileWidth * tileSize;
 		var margin = Math.floor((gameScreenWidth - gameWidth)/2);
 		document.getElementById("game").style.left = (margin + MIN_MARGIN) + "px";
+		document.getElementById("score").style.left = (margin + MIN_MARGIN + 2*tileSize) + "px";
 		document.getElementById("game").style.top = MIN_MARGIN + "px";
 	} else {
 		tileSize = Math.floor(gameScreenWidth/gameTileWidth);
 		var gameHeight = gameTileHeight * tileSize;
 		var margin = Math.floor((gameScreenHeight - gameHeight)/2);
 		document.getElementById("game").style.top = (margin + MIN_MARGIN) + "px";
+		document.getElementById("score").style.left = (margin + MIN_MARGIN + 2*tileSize) + "px";
 		document.getElementById("game").style.left = MIN_MARGIN + "px";
 	}
 }
@@ -219,9 +247,11 @@ function generateGrid() {
 	removeDeadEnds(gridEnum.blank, gridEnum.wall);
 	removeIslands();
 	replaceInGrid(gridEnum.blank, gridEnum.onigiri);
+	placeSushi();
 }
 
 function initializeGrid() {
+	gridArray = [];
 	for (var y=0; y<GRID_HEIGHT; y++) {
 		var rowArray = [];
 		for (var x=0; x<GRID_WIDTH; x++) {
@@ -584,10 +614,27 @@ function removeIslands() {
 }
 
 function isValid(x,y) {
+	if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
+		return false;
+	}
 	if (gridArray[y][x] == gridEnum.blank || gridArray[y][x] == gridEnum.onigiri || gridArray[y][x] == gridEnum.sushi) {
 		return true;
 	}
 	return false;
+}
+
+function placeSushi() {
+	for (var i=0; i<SUSHI_PER_GAME; i++) {
+		var placed = false;
+		while (!placed) {
+			var ranX = Math.floor(Math.random() * GRID_WIDTH);
+			var ranY = Math.floor(Math.random() * GRID_HEIGHT);
+			if (gridArray[ranY][ranX] == gridEnum.onigiri) {
+				placed = true;
+				gridArray[ranY][ranX] = gridEnum.sushi;
+			}
+		}
+	}
 }
 
 function drawWorld() {
@@ -647,16 +694,30 @@ document.onkeyup = function(e) {
 	}
 }
 
+function softResetNinjaMan() {
+	ninjaMan.currentTick = 1;
+	ninjaMan.x = 0;
+	ninjaMan.y = 0;
+	ninjaMan.invulnerable = false;
+	ninjaMan.invulnerableTimeRemaining = 0;
+	ninjaMan.sushiPower = false;
+	ninjaMan.sushiPowerTimeRemaining = 0;
+	document.getElementById("ninja-man").classList.remove("spin");
+	document.getElementById("ninja-man").classList.remove("blink");
+}
+
 function resetNinjaMan() {
 	ninjaMan.currentTick = 1;
 	ninjaMan.x = 0;
 	ninjaMan.y = 0;
 	ninjaMan.score = 0;
 	ninjaMan.invulnerable = false;
-	ninjaMan.flashCount = 0;
+	ninjaMan.invulnerableTimeRemaining = 0;
 	ninjaMan.livesRemaining = STARTING_LIVES;
 	ninjaMan.sushiPower = false;
 	ninjaMan.sushiPowerTimeRemaining = 0;
+	document.getElementById("ninja-man").classList.remove("spin");
+	document.getElementById("ninja-man").classList.remove("blink");
 }
 
 function placeNinjaMan() {
@@ -681,24 +742,46 @@ function ninjaManGameTick() {
 	} else {
 		ninjaMan.currentTick++;
 	}
+	if (ninjaMan.invulnerable) {
+		ninjaMan.invulnerableTimeRemaining--;
+		if (ninjaMan.invulnerableTimeRemaining <= 0) {
+			ninjaMan.invulnerable = false;
+			document.getElementById("ninja-man").classList.remove("blink");
+		}
+	}
+	if (ninjaMan.sushiPower) {
+		ninjaMan.sushiPowerTimeRemaining--;
+		if (ninjaMan.sushiPowerTimeRemaining <= 0) {
+			ninjaMan.sushiPower = false;
+			document.getElementById("ninja-man").classList.remove("spin");
+		}
+	}
 }
 
 function currentKeyNinjaManCheck() {
 	if(currentKey == keyEnum.left) { // LEFT
 		moveNinjaMan(-1,0);
-		document.getElementById("ninja-man").style.transform = "scaleX(-1)";
+		if (!ninjaMan.sushiPower) {
+			document.getElementById("ninja-man").style.transform = "scaleX(-1)";
+		}
 	}
 	else if (currentKey == keyEnum.right) { // RIGHT
 		moveNinjaMan(1,0);
-		document.getElementById("ninja-man").style.transform = "";
+		if (!ninjaMan.sushiPower) {
+			document.getElementById("ninja-man").style.transform = "";
+		}
 	}
 	else if (currentKey == keyEnum.up) { // UP
 		moveNinjaMan(0,-1);
-		document.getElementById("ninja-man").style.transform = "rotate(-90deg)";
+		if (!ninjaMan.sushiPower) {
+			document.getElementById("ninja-man").style.transform = "rotate(-90deg)";
+		}
 	}
 	else if (currentKey == keyEnum.down) { // DOWN
 		moveNinjaMan(0,1);
-		document.getElementById("ninja-man").style.transform = "rotate(90deg)";
+		if (!ninjaMan.sushiPower) {
+			document.getElementById("ninja-man").style.transform = "rotate(90deg)";
+		}
 	}
 }
 
@@ -717,6 +800,9 @@ function moveNinjaMan(xMove,yMove) {
 function drawNinjaMan() {
 	document.getElementById("ninja-man").style.left = (ninjaMan.x + 1) * tileSize + "px";
 	document.getElementById("ninja-man").style.top = (ninjaMan.y - (1 + GRID_HEIGHT)) * tileSize + "px";
+	if (ninjaMan.invulnerable) {
+		document.getElementById("ninja-man").classList.add("blink");
+	}
 }
 
 function updateScore() {
@@ -728,6 +814,9 @@ function updateScore() {
 		gridArray[ninjaMan.y][ninjaMan.x] = gridEnum.blank;
 		drawWorld();
 		ninjaMan.score += SUSHI_SCORE;
+		ninjaMan.sushiPower = true;
+		ninjaMan.sushiPowerTimeRemaining = SUSHI_POWER_TIME;
+		document.getElementById("ninja-man").classList.add("spin");
 	}
 }
 
@@ -763,18 +852,26 @@ function resetGhosts() {
 	red.x = -1;
 	red.y = -1;
 	red.dead = false;
+	document.getElementById("red").classList.remove("spin");
+	document.getElementById("red").style.backgroundImage = 'url("img/red.gif")';
 	pumpky.currentTick = 1;
 	pumpky.x = -1;
 	pumpky.y = -1;
 	pumpky.dead = false;
+	document.getElementById("pumpky").classList.remove("spin");
+	document.getElementById("pumpky").style.backgroundImage = 'url("img/pumpky.gif")';
 	pinky.currentTick = 1;
 	pinky.x = -1;
 	pinky.y = -1;
 	pinky.dead = false;
+	document.getElementById("pinky").classList.remove("spin");
+	document.getElementById("pinky").style.backgroundImage = 'url("img/pinky.gif")';
 	bluey.currentTick = 1;
 	bluey.x = -1;
 	bluey.y = -1;
 	bluey.dead = false;
+	document.getElementById("bluey").classList.remove("spin");
+	document.getElementById("bluey").style.backgroundImage = 'url("img/bluey.gif")';
 }
 
 function drawGhosts() {
@@ -786,6 +883,145 @@ function drawGhosts() {
 	document.getElementById("pinky").style.top = (pinky.y - (1 + GRID_HEIGHT)) * tileSize + "px";
 	document.getElementById("bluey").style.left = ((bluey.x - 3) * tileSize - (4*4)) + "px";
 	document.getElementById("bluey").style.top = (bluey.y - (1 + GRID_HEIGHT)) * tileSize + "px";
+}
+
+function moveGhosts() {
+	moveGhost(red);
+	moveGhost(pumpky);
+	moveGhost(pinky);
+	moveGhost(bluey);
+	drawGhosts();
+}
+
+function moveGhost(ghost) {
+	if (!ghost.dead) {
+		var moved = false;
+		var triedX = false;
+		var triedY = false;
+		while (!moved) {
+			var test = Math.floor(Math.random() * 2);
+			if (ninjaMan.sushiPower) {
+				if ((test == 0 && !triedX) || (!triedX && triedY)) {
+					if (ghost.x > ninjaMan.x && isValid(ghost.x+1, ghost.y)) {
+						ghost.x++;
+						moved = true;
+					} else if (ghost.x <= ninjaMan.x && isValid(ghost.x-1, ghost.y)) {
+						ghost.x--;
+						moved = true;
+					}
+					triedX = true;
+				} else if ((test == 1 && !triedY) || (!triedY && triedX)) {
+					if (ghost.y > ninjaMan.y && isValid(ghost.x, ghost.y+1)) {
+						ghost.y++;
+						moved = true;
+					} else if (ghost.y <= ninjaMan.y && isValid(ghost.x, ghost.y-1)) {
+						ghost.y--;
+						moved = true;
+					}
+					triedY = true;
+				} else if (triedX && triedY) {
+					var direction = Math.floor(Math.random() * 4);
+					if (direction == 0) {
+						if (isValid(ghost.x-1, ghost.y)) {
+							ghost.x--;
+							moved = true;
+						}
+					} else if (direction == 1) {
+						if (isValid(ghost.x+1, ghost.y)) {
+							ghost.x++;
+							moved = true;
+						}
+					} else if (direction == 2) {
+						if (isValid(ghost.x, ghost.y-1)) {
+							ghost.y--;
+							moved = true;
+						}
+					} else if (direction == 3) {
+						if (isValid(ghost.x, ghost.y+1)) {
+							ghost.y++;
+							moved = true;
+						}
+					}
+				}
+			} else { 
+			if ((test == 0 && !triedX) || (!triedX && triedY)) {
+					if (ghost.x > ninjaMan.x && isValid(ghost.x-1, ghost.y)) {
+						ghost.x--;
+						moved = true;
+					} else if (ghost.x <= ninjaMan.x && isValid(ghost.x+1, ghost.y)) {
+						ghost.x++;
+						moved = true;
+					}
+					triedX = true;
+				} else if ((test == 1 && !triedY) || (!triedY && triedX)) {
+					if (ghost.y > ninjaMan.y && isValid(ghost.x, ghost.y-1)) {
+						ghost.y--;
+						moved = true;
+					} else if (ghost.y <= ninjaMan.y && isValid(ghost.x, ghost.y+1)) {
+						ghost.y++;
+						moved = true;
+					}
+					triedY = true;
+				} else if (triedX && triedY) {
+					var direction = Math.floor(Math.random() * 4);
+					if (direction == 0) {
+						if (isValid(ghost.x-1, ghost.y)) {
+							ghost.x--;
+							moved = true;
+						}
+					} else if (direction == 1) {
+						if (isValid(ghost.x+1, ghost.y)) {
+							ghost.x++;
+							moved = true;
+						}
+					} else if (direction == 2) {
+						if (isValid(ghost.x, ghost.y-1)) {
+							ghost.y--;
+							moved = true;
+						}
+					} else if (direction == 3) {
+						if (isValid(ghost.x, ghost.y+1)) {
+							ghost.y++;
+							moved = true;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+function ghostsGameTick() {
+	if (red.currentTick >= GHOST_MOVEMENT_SPEED) {
+		moveGhosts();
+		red.currentTick = 1;
+	} else {
+		red.currentTick++;
+	}
+	if (red.dead && red.x != -1) {
+		red.x = -1;
+		red.y = -1;
+		document.getElementById("red").style.backgroundImage = 'url("img/scaredy.png")';
+		document.getElementById("red").classList.add("spin");
+	}
+	if (pumpky.dead && pumpky.x != -1) {
+		pumpky.x = GRID_WIDTH;
+		pumpky.y = -1;
+		document.getElementById("pumpky").style.backgroundImage = 'url("img/scaredy.png")';
+		document.getElementById("pumpky").classList.add("spin");
+	}
+	if (pinky.dead && pinky.x != -1) {
+		pinky.x = -1;
+		pinky.y = GRID_HEIGHT;
+		document.getElementById("pinky").style.backgroundImage = 'url("img/scaredy.png")';
+		document.getElementById("pinky").classList.add("spin");
+	}
+	if (bluey.dead && bluey.x != -1) {
+		bluey.x = GRID_WIDTH;
+		bluey.y = GRID_HEIGHT;
+		document.getElementById("bluey").style.backgroundImage = 'url("img/scaredy.png")';
+		document.getElementById("bluey").classList.add("spin");
+	}
 }
 
 /* Game Functions */
@@ -811,10 +1047,109 @@ function endGame() {
 }
 
 function gameTick() {
-	ninjaManGameTick();
-	if (isComplete()) {
-		//start new game but keep score
+	if (gameTicks>TICKS_BEFORE_START) {
+		checkCollision();
+		ninjaManGameTick();
+		ghostsGameTick();
+		if (isComplete()) {
+			newMap();
+		}
+		scoreBoard();
+		if (ninjaMan.livesRemaining <= 0) {
+			resetGame();
+		}
 	}
+	gameTicks++;
+}
+
+function checkCollision() {
+	if (!ninjaMan.invulnerable) {
+		if (!red.dead && ninjaMan.x == red.x && ninjaMan.y == red.y) {
+			if (ninjaMan.sushiPower) {
+				red.dead = true;
+				ninjaMan.score += GHOST_SCORE;
+			} else {
+				ninjaMan.invulnerable = true;
+				ninjaMan.livesRemaining--;
+				ninjaMan.invulnerableTimeRemaining = INVULNERABILITY_TIME;
+				document.getElementById("ninja-man").classList.add("blink");
+			}
+		}
+		if (!pumpky.dead && ninjaMan.x == pumpky.x && ninjaMan.y == pumpky.y) {
+			if (ninjaMan.sushiPower) {
+				pumpky.dead = true;
+				ninjaMan.score += GHOST_SCORE;
+			} else {
+				ninjaMan.invulnerable = true;
+				ninjaMan.livesRemaining--;
+				ninjaMan.invulnerableTimeRemaining = INVULNERABILITY_TIME;
+				document.getElementById("ninja-man").classList.add("blink");
+			}
+		}
+		if (!pinky.dead && ninjaMan.x == pinky.x && ninjaMan.y == pinky.y) {
+			if (ninjaMan.sushiPower) {
+				pinky.dead = true;
+				ninjaMan.score += GHOST_SCORE;
+			} else {
+				ninjaMan.invulnerable = true;
+				ninjaMan.livesRemaining--;
+				ninjaMan.invulnerableTimeRemaining = INVULNERABILITY_TIME;
+				document.getElementById("ninja-man").classList.add("blink");
+			}
+		}
+		if (!bluey.dead && ninjaMan.x == bluey.x && ninjaMan.y == bluey.y) {
+			if (ninjaMan.sushiPower) {
+				bluey.dead = true;
+				ninjaMan.score += GHOST_SCORE;
+			} else {
+				ninjaMan.invulnerable = true;
+				ninjaMan.livesRemaining--;
+				ninjaMan.invulnerableTimeRemaining = INVULNERABILITY_TIME;
+				document.getElementById("ninja-man").classList.add("blink");
+			}
+		}
+	}
+}
+
+function scoreBoard() {
+	if (ninjaMan.score > highscore) {
+		highscore = ninjaMan.score;
+	}
+	document.getElementById("score").innerHTML = ": Highscore " + highscore + " : Score " + ninjaMan.score + " : Lives " + ninjaMan.livesRemaining + " :";
+}
+
+function resetGame() {
+	window.clearTimeout(timer);
+	gameTicks = 0;
+	gridArray = null;
+	initializeGrid();
+	drawWorld();
+	generateGrid();
+	drawWorld();
+	resetNinjaMan();
+	resetGhosts();
+	placeNinjaMan();
+	placeGhosts();
+	drawNinjaMan();
+	drawGhosts();
+	timer = window.setInterval(gameTick, GAME_TICK_TIME);
+}
+
+function newMap() {
+	window.clearTimeout(timer);
+	gameTicks = 0;
+	gridArray = null;
+	initializeGrid();
+	drawWorld();
+	generateGrid();
+	drawWorld();
+	softResetNinjaMan();
+	resetGhosts();
+	placeNinjaMan();
+	placeGhosts();
+	drawNinjaMan();
+	drawGhosts();
+	timer = window.setInterval(gameTick, GAME_TICK_TIME);
 }
 
 		</script>
